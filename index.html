@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Gamewear Warehouse</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #101828;
+      background: #f4f7fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(37, 99, 235, .13), transparent 34%),
+        radial-gradient(circle at 85% 75%, rgba(8, 145, 178, .11), transparent 32%),
+        #f4f7fb;
+    }
+
+    main {
+      width: min(100%, 430px);
+      padding: 34px 30px 28px;
+      border: 1px solid #dbe4f0;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, .96);
+      box-shadow: 0 22px 55px rgba(16, 24, 40, .12);
+      text-align: center;
+    }
+
+    .mark {
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 18px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #175cd3, #0891b2);
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(23, 92, 211, .25);
+      font-size: 25px;
+      font-weight: 900;
+      letter-spacing: -2px;
+    }
+
+    h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.5px; }
+    p { margin: 0; color: #667085; font-size: 14px; line-height: 1.55; }
+
+    .loader {
+      width: 34px;
+      height: 34px;
+      margin: 24px auto 14px;
+      border: 4px solid #dbeafe;
+      border-top-color: #175cd3;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    #status { min-height: 44px; }
+
+    button {
+      display: none;
+      width: 100%;
+      min-height: 43px;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 10px;
+      background: #175cd3;
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:hover { background: #1849a9; }
+    .error .loader { display: none; }
+    .error button { display: block; }
+    .error #status { color: #b42318; }
+
+    small {
+      display: block;
+      margin-top: 20px;
+      color: #98a2b3;
+      font-size: 11px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .loader { animation: none; } }
+  </style>
+</head>
+<body>
+  <main id="card" aria-live="polite">
+    <div class="mark" aria-hidden="true">GW</div>
+    <h1>Gamewear Warehouse</h1>
+    <p>Connecting securely to the warehouse server…</p>
+    <div class="loader" aria-hidden="true"></div>
+    <p id="status">Please wait. You will be sent to sign in automatically.</p>
+    <button id="retry" type="button">Try again</button>
+    <small>The server address is updated automatically.</small>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const CONFIG_URL = "https://raw.githubusercontent.com/gamewear-server/gamewear-server/main/server.json";
+      const card = document.getElementById("card");
+      const status = document.getElementById("status");
+      const retry = document.getElementById("retry");
+
+      function normaliseServer(value) {
+        const url = new URL(String(value || "").trim());
+        if (url.protocol !== "https:" && url.protocol !== "http:") {
+          throw new Error("Unsupported server address");
+        }
+        if (url.origin === window.location.origin) {
+          throw new Error("The server address points back to this page");
+        }
+        url.hash = "";
+        return url.href.replace(/\/$/, "");
+      }
+
+      async function connect() {
+        card.classList.remove("error");
+        status.textContent = "Please wait. You will be sent to sign in automatically.";
+        retry.disabled = true;
+
+        try {
+          const separator = CONFIG_URL.includes("?") ? "&" : "?";
+          const response = await fetch(`${CONFIG_URL}${separator}time=${Date.now()}`, {
+            cache: "no-store",
+            headers: { "Accept": "application/json" },
+          });
+          if (!response.ok) throw new Error(`Configuration request failed (${response.status})`);
+
+          const config = await response.json();
+          const target = normaliseServer(config.url);
+          status.textContent = "Server found. Opening sign in…";
+          window.location.replace(`${target}/`);
+        } catch (error) {
+          console.error("Gamewear launcher:", error);
+          card.classList.add("error");
+          status.textContent = "The warehouse server is unavailable. Check the connection, then try again.";
+          retry.disabled = false;
+        }
+      }
+
+      retry.addEventListener("click", connect);
+      connect();
+    })();
+  </script>
+</body>
+</html>
